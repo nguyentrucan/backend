@@ -38,7 +38,7 @@ class productController {
           });
           allImageUrl = [...allImageUrl, result.url];
         }
-        await productModel.create({
+        const product = await productModel.create({
           sellerId: id,
           name,
           slug,
@@ -51,13 +51,63 @@ class productController {
           images: allImageUrl,
           brand: brand.trim(),
         });
-        responseReturn(res, 201, { message: "Product Added Successfully" });
+
+        responseReturn(res, 201, {
+          product,
+          message: "Product Added Successfully",
+        });
       } catch (error) {
         responseReturn(res, 500, { message: error.message });
       }
     });
   };
   // End Add Product
+
+  // Get Products
+  getProducts = async (req, res) => {
+    const { page, searchValue, parPage } = req.query;
+    const { id } = req;
+
+    const skipPage = parseInt(parPage) * (parseInt(page) - 1);
+
+    try {
+      if (searchValue) {
+        const products = await productModel
+          .find({
+            $text: { $search: searchValue },
+            sellerId: id,
+          })
+          .skip(skipPage)
+          .limit(parPage)
+          .sort({ createdAt: -1 });
+        const totalProducts = await productModel
+          .find({
+            $text: { $search: searchValue },
+            sellerId: id,
+          })
+          .countDocuments();
+
+        responseReturn(res, 200, { products, totalProducts });
+      } else {
+        const products = await productModel
+          .find({ sellerId: id })
+          .skip(skipPage)
+          .limit(parPage)
+          .sort({ createdAt: -1 });
+        const totalProducts = await productModel
+          .find({
+            sellerId: id,
+          })
+          .countDocuments();
+        responseReturn(res, 200, { products, totalProducts });
+      }
+    } catch (error) {
+      console.log(error);
+
+      responseReturn(res, 500, { message: error.message });
+    }
+  };
+  // End Get Products
 }
 
 module.exports = new productController();
